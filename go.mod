@@ -26,6 +26,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/hcl v1.0.0
+	github.com/hashicorp/hcl/v2 v2.13.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.10.1
 	github.com/imdario/mergo v0.3.12
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
@@ -41,7 +42,7 @@ require (
 	github.com/thoas/go-funk v0.9.1
 	github.com/urfave/cli v1.22.8
 	github.com/xanzy/go-gitlab v0.65.0
-	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871
+	golang.org/x/crypto v0.0.0-20220517005047-85d78b3ac167
 	golang.org/x/mod v0.5.0
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	google.golang.org/genproto v0.0.0-20220222213610-43724f9ea8cf

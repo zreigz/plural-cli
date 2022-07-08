@@ -7,8 +7,16 @@ import (
 	"path"
 	"strings"
 
+	"golang.org/x/text/language"
+
+	"golang.org/x/text/cases"
 	"gopkg.in/oleiade/reflections.v1"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	pluralDir  = ".plural"
+	ConfigName = "config.yml"
 )
 
 type Metadata struct {
@@ -16,13 +24,13 @@ type Metadata struct {
 }
 
 type Config struct {
-	Email           string    `json:"email"`
-	Token           string    `yaml:"token" json:"token"`
-	NamespacePrefix string    `yaml:"namespacePrefix"`
-	Endpoint        string    `yaml:"endpoint"`
-	LockProfile     string    `yaml:"lockProfile"`
+	Email           string `json:"email"`
+	Token           string `yaml:"token" json:"token"`
+	NamespacePrefix string `yaml:"namespacePrefix"`
+	Endpoint        string `yaml:"endpoint"`
+	LockProfile     string `yaml:"lockProfile"`
+	ReportErrors    bool   `yaml:"reportErrors"`
 	metadata        *Metadata
-	ReportErrors    bool      `yaml:"reportErrors"`
 }
 
 type VersionedConfig struct {
@@ -34,15 +42,12 @@ type VersionedConfig struct {
 
 func configFile() string {
 	folder, _ := os.UserHomeDir()
-	return path.Join(folder, ".plural", "config.yml")
+	return path.Join(folder, pluralDir, ConfigName)
 }
 
 func Exists() bool {
 	_, err := os.Stat(configFile())
-	if os.IsNotExist(err) {
-		return false
-	}
-	return true
+	return !os.IsNotExist(err)
 }
 
 func Read() Config {
@@ -51,13 +56,13 @@ func Read() Config {
 
 func Profile(name string) error {
 	folder, _ := os.UserHomeDir()
-	conf := Import(path.Join(folder, ".plural", name+".yml"))
+	conf := Import(path.Join(folder, pluralDir, name+".yml"))
 	return conf.Flush()
 }
 
 func Profiles() ([]*VersionedConfig, error) {
 	folder, _ := os.UserHomeDir()
-	confDir := path.Join(folder, ".plural")
+	confDir := path.Join(folder, pluralDir)
 	files, err := ioutil.ReadDir(confDir)
 	confs := []*VersionedConfig{}
 	if err != nil {
@@ -65,14 +70,16 @@ func Profiles() ([]*VersionedConfig, error) {
 	}
 
 	for _, f := range files {
-		if !strings.HasSuffix(f.Name(), "config.yml") && strings.HasSuffix(f.Name(), ".yml") {
+		if !strings.HasSuffix(f.Name(), ConfigName) && strings.HasSuffix(f.Name(), ".yml") {
 			contents, err := ioutil.ReadFile(path.Join(confDir, f.Name()))
 			if err != nil {
 				return confs, err
 			}
 
 			versioned := &VersionedConfig{}
-			yaml.Unmarshal(contents, versioned)
+			if err = yaml.Unmarshal(contents, versioned); err != nil {
+				return nil, err
+			}
 			confs = append(confs, versioned)
 		}
 	}
@@ -87,7 +94,9 @@ func Import(file string) (conf Config) {
 	}
 
 	versioned := &VersionedConfig{Spec: &conf}
-	yaml.Unmarshal(contents, versioned)
+	if err = yaml.Unmarshal(contents, versioned); err != nil {
+		return Config{}
+	}
 	conf.metadata = versioned.Metadata
 	return
 }
@@ -98,9 +107,11 @@ func FromToken(token string) error {
 }
 
 func Amend(key string, value string) error {
-	key = strings.Title(key)
+	key = cases.Title(language.Und, cases.NoLower).String(key)
 	conf := Read()
-	reflections.SetField(&conf, key, value)
+	if err := reflections.SetField(&conf, key, value); err != nil {
+		return err
+	}
 	return conf.Flush()
 }
 
@@ -150,13 +161,13 @@ func (c *Config) Save(filename string) error {
 	}
 
 	folder, _ := os.UserHomeDir()
-	if err := os.MkdirAll(path.Join(folder, ".plural"), os.ModePerm); err != nil {
+	if err := os.MkdirAll(path.Join(folder, pluralDir), os.ModePerm); err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(path.Join(folder, ".plural", filename), io, 0644)
+	return ioutil.WriteFile(path.Join(folder, pluralDir, filename), io, 0644)
 }
 
 func (c *Config) Flush() error {
-	return c.Save("config.yml")
+	return c.Save(ConfigName)
 }
